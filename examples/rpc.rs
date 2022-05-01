@@ -49,6 +49,9 @@ impl Server {
             .map_err(|err| println!("{}", &err))
             .unwrap();
         //write data to lmr
+        lmr_sync.as_mut_slice();
+        // let as_ptr = &Request::Sync as *const Request as *const u8;
+        
         unsafe { *(lmr_sync.as_mut_ptr() as *mut Request) = Request::Sync };
         rdma.send(&lmr_sync)
             .await

@@ -17,17 +17,17 @@ async fn read_rmr_from_client(rdma: &Rdma) {
     let mut lmr = rdma.alloc_local_mr(Layout::new::<char>()).unwrap();
     let rmr = rdma.receive_remote_mr().await.unwrap();
     rdma.read(&mut lmr, &rmr).await.unwrap();
-    dbg!(unsafe { *(lmr.as_ptr() as *const char) });
+    dbg!( String::from_utf8_lossy(&lmr.as_slice()[0..1]) );
 }
 
 async fn receive_after_being_written(rdma: &Rdma) {
     let lmr = rdma.receive_local_mr().await.unwrap();
-    dbg!(unsafe { *(lmr.as_ptr() as *const char) });
+    dbg!( String::from_utf8_lossy(&lmr.as_slice()[0..1]) );
 }
 
 async fn receive_data_from_client(rdma: &Rdma) {
     let lmr = rdma.receive().await.unwrap();
-    dbg!(unsafe { *(lmr.as_ptr() as *const char) });
+    dbg!( String::from_utf8_lossy(&lmr.as_slice()[0..1]) );
 }
 
 #[tokio::main]

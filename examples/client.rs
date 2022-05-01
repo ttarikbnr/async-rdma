@@ -15,21 +15,21 @@ use tracing::debug;
 
 async fn send_lmr_to_server(rdma: &Rdma) {
     let mut lmr = rdma.alloc_local_mr(Layout::new::<char>()).unwrap();
-    unsafe { *(lmr.as_mut_ptr() as *mut char) = 'h' };
+    lmr.as_mut_slice()[0] = b'h';
     rdma.send_local_mr(lmr).await.unwrap();
 }
 
 async fn request_then_write(rdma: &Rdma) {
     let mut rmr = rdma.request_remote_mr(Layout::new::<char>()).await.unwrap();
     let mut lmr = rdma.alloc_local_mr(Layout::new::<char>()).unwrap();
-    unsafe { *(lmr.as_mut_ptr() as *mut char) = 'e' };
+    lmr.as_mut_slice()[0] = b'e';
     rdma.write(&lmr, &mut rmr).await.unwrap();
     rdma.send_remote_mr(rmr).await.unwrap();
 }
 
 async fn send_data_to_server(rdma: &Rdma) {
     let mut lmr = rdma.alloc_local_mr(Layout::new::<char>()).unwrap();
-    unsafe { *(lmr.as_mut_ptr() as *mut char) = 'y' };
+    lmr.as_mut_slice()[0] = b'y';
     rdma.send(&lmr).await.unwrap();
 }
 
@@ -37,7 +37,9 @@ async fn send_data_to_server(rdma: &Rdma) {
 async fn main() {
     tracing_subscriber::fmt::init();
     debug!("client start");
-    let rdma = Rdma::connect("127.0.0.1:5555", 1, 1, 512).await.unwrap();
+    let rdma = Rdma::connect("127.0.0.1:5555", 1, 1, 512)
+        .await
+        .unwrap();
     send_lmr_to_server(&rdma).await;
     request_then_write(&rdma).await;
     send_data_to_server(&rdma).await;
