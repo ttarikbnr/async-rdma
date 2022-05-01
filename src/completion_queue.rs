@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use rdma_sys::{
     ibv_cq, ibv_create_cq, ibv_destroy_cq, ibv_poll_cq, ibv_req_notify_cq, ibv_wc, ibv_wc_status,
 };
-use std::{fmt::Debug, io, mem, ops::Sub, ptr::NonNull};
+use std::{fmt::Debug, io, mem::{self, MaybeUninit}, ops::Sub, ptr::NonNull};
 use thiserror::Error;
 use tracing::error;
 
@@ -60,6 +60,7 @@ impl CompletionQueue {
     }
 
     /// Poll `num_entries` work completions from CQ
+    #[allow(dead_code)]
     pub(crate) fn poll(&self, num_entries: usize) -> io::Result<Vec<WorkCompletion>> {
         let mut ans: Vec<WorkCompletion> = Vec::with_capacity(num_entries);
 
@@ -83,13 +84,19 @@ impl CompletionQueue {
         }
     }
 
+
     /// Poll one work completion from CQ
     pub(crate) fn poll_single(&self) -> io::Result<WorkCompletion> {
-        let polled = self.poll(1)?;
-        polled
-            .into_iter()
-            .next()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::WouldBlock, ""))
+        let mut ans: MaybeUninit<WorkCompletion> = MaybeUninit::<WorkCompletion>::uninit();
+
+        // The capacity equals to the length
+        let poll_res =
+            unsafe { ibv_poll_cq(self.as_ptr(), 1, ans.as_mut_ptr().cast()) };
+        if poll_res == 1 {
+            Ok(unsafe { ans.assume_init() })
+        } else {
+            Err(io::Error::new(io::ErrorKind::WouldBlock, ""))
+        }
     }
 
     /// Get the internal event channel
